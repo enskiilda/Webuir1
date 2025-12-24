@@ -87,8 +87,8 @@ function detailsExtension() {
 	};
 }
 
-export default function (options = {}) {
+export default function (_options = {}) {
 	return {
-		extensions: [detailsExtension(options)]
+		extensions: [detailsExtension()]
 	};
 }
