@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { APP_NAME } from '$lib/constants';
 
+export const WEBUI_VERSION = '0.6.40';
+
 export type Model = OpenAIModel | OllamaModel;
 type BaseModel = { id: string; name: string; info?: any; owned_by: 'ollama' | 'openai' | 'arena'; };
 export interface OpenAIModel extends BaseModel { owned_by: 'openai'; external: boolean; source?: string; }
