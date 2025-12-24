@@ -405,7 +405,7 @@ export const getUserPosition = async (raw = false) => {
         }
 
         // Extract the latitude and longitude from the position
-        const { latitude, longitude } = position.coords;
+        const { latitude, longitude } = (position as GeolocationPosition).coords;
 
         if (raw) {
                 return { latitude, longitude };
@@ -439,13 +439,13 @@ export const processDetails = (content) => {
         if (matches) {
                 for (const match of matches) {
                         const attributesRegex = /(\w+)="([^"]*)"/g;
-                        const attributes = {};
+                        const attributes: Record<string, string> = {};
                         let attributeMatch;
                         while ((attributeMatch = attributesRegex.exec(match)) !== null) {
                                 attributes[attributeMatch[1]] = attributeMatch[2];
                         }
 
-                        content = content.replace(match, `"${attributes.result}"`);
+                        content = content.replace(match, `"${attributes['result'] || ''}"`);
                 }
         }
 

@@ -1,325 +1,75 @@
+import { create } from 'zustand';
 import { APP_NAME } from '$lib/constants';
-import { type Writable, writable } from 'svelte/store';
 
-// Backend
-export const WEBUI_NAME = writable(APP_NAME);
-
-export const WEBUI_VERSION = writable(null);
-
-const defaultConfig: Config = {
-        license_metadata: null,
-        status: true,
-        name: 'Open WebUI',
-        version: '0.6.40',
-        default_locale: 'pl-PL',
-        default_models: 'deepseek-ai/deepseek-v3.1',
-        default_prompt_suggestions: [],
-        features: {
-                enable_admin_chat_access: true,
-                enable_community_sharing: true
-        }
-};
-export const config: Writable<Config | undefined> = writable(defaultConfig);
-
-const defaultUser = {
-        id: 'user',
-        email: 'user@localhost',
-        name: 'User',
-        role: 'admin',
-        profile_image_url: '/static/favicon.png',
-        permissions: {
-                chat: {
-                        temporary_enforced: false,
-                        multiple_models: true
-                },
-                features: {
-                        image_generation: true,
-                        code_interpreter: true,
-                        web_search: true
-                }
-        }
-};
-export const user: Writable<SessionUser | undefined> = writable(defaultUser);
-
-// Electron App
-export const isApp = writable(false);
-
-// Frontend
-export const MODEL_DOWNLOAD_POOL = writable({});
-
-export const mobile = writable(false);
-
-export const socket: Writable<null | any> = writable(null);
-
-export const theme = writable('light');
-
-export const chatId = writable('');
-export const chatTitle = writable('');
-
-export const chats = writable([]);
-export const pinnedChats = writable([]);
-export const tags = writable([]);
-export const folders = writable([]);
-
-export const selectedFolder = writable(null);
-
-export const models: Writable<Model[]> = writable([
-        {
-                id: 'moonshotai/kimi-k2-thinking',
-                name: 'Kimi K2 Thinking',
-                owned_by: 'openai' as const,
-                external: true,
-                source: 'nvidia'
-        },
-        {
-                id: 'bytedance/seed-oss-36b-instruct',
-                name: 'Seed 36B Instruct',
-                owned_by: 'openai' as const,
-                external: true,
-                source: 'nvidia'
-        },
-        {
-                id: 'deepseek-ai/deepseek-v3.1',
-                name: 'DeepSeek V3.1',
-                owned_by: 'openai' as const,
-                external: true,
-                source: 'nvidia'
-        },
-        {
-                id: 'deepseek-ai/deepseek-r1-0528',
-                name: 'DeepSeek R1',
-                owned_by: 'openai' as const,
-                external: true,
-                source: 'nvidia'
-        }
-]);
-
-export const knowledge: Writable<Document[]> = writable([]);
-export const tools = writable([]);
-export const functions = writable([]);
-
-export const toolServers = writable([]);
-
-export const settings: Writable<Settings> = writable({});
-
-
-export const showSidebar = writable(false);
-export const showSearch = writable(false);
-export const showSettings = writable(false);
-export const showShortcuts = writable(false);
-export const showArchivedChats = writable(false);
-export const showChangelog = writable(false);
-
-export const showControls = writable(false);
-export const showEmbeds = writable(false);
-export const showArtifacts = writable(false);
-
-export const artifactCode = writable('');
-export const artifactContents = writable({});
-
-export const embed = writable(null);
-
-export const temporaryChatEnabled = writable(false);
-export const scrollPaginationEnabled = writable(false);
-export const currentChatPage = writable(1);
-
+export const WEBUI_VERSION = '0.6.40';
 
 export type Model = OpenAIModel | OllamaModel;
+type BaseModel = { id: string; name: string; info?: any; owned_by: 'ollama' | 'openai' | 'arena'; };
+export interface OpenAIModel extends BaseModel { owned_by: 'openai'; external: boolean; source?: string; }
+export interface OllamaModel extends BaseModel { owned_by: 'ollama'; details: any; size: number; description: string; model: string; modified_at: string; digest: string; ollama?: any; }
+type Settings = Record<string, any>;
+type Config = { license_metadata: any; status: boolean; name: string; version: string; default_locale: string; default_models: string; default_prompt_suggestions: { content: string; title: [string, string] }[]; features: { enable_admin_chat_access: boolean; enable_community_sharing: boolean }; ui?: any; };
+export type SessionUser = { permissions: any; id: string; email: string; name: string; role: string; profile_image_url: string; };
 
-type ModelConfig = {
-        id: string;
-        name?: string;
-        meta?: {
-                profile_image_url?: string;
-                description?: string;
-                capabilities?: {
-                        vision?: boolean;
-                        usage?: boolean;
-                        citations?: boolean;
-                };
-                tags?: { name: string }[];
-                hidden?: boolean;
-        };
-        base_model_id?: string;
-        params?: Record<string, any>;
+const AI_MODELS: OpenAIModel[] = [
+	{ id: 'moonshotai/kimi-k2-thinking', name: 'Kimi K2 Thinking', owned_by: 'openai', external: true, source: 'nvidia' },
+	{ id: 'bytedance/seed-oss-36b-instruct', name: 'Seed 36B Instruct', owned_by: 'openai', external: true, source: 'nvidia' },
+	{ id: 'deepseek-ai/deepseek-v3.1', name: 'DeepSeek V3.1', owned_by: 'openai', external: true, source: 'nvidia' },
+	{ id: 'deepseek-ai/deepseek-r1-0528', name: 'DeepSeek R1', owned_by: 'openai', external: true, source: 'nvidia' },
+	{ id: 'amazon/nova-2-lite-v1', name: 'Amazon Nova 2 Lite', owned_by: 'openai', external: true, source: 'openrouter' }
+];
+
+const defaultConfig: Config = {
+	license_metadata: null, status: true, name: 'Open WebUI', version: '0.6.40', default_locale: 'pl-PL', default_models: 'moonshotai/kimi-k2-thinking',
+	default_prompt_suggestions: [
+		{ content: 'Wymyśl nazwę', title: ['Wymyśl nazwę', 'dla nowej kawiarni'] },
+		{ content: 'Przetłumacz tekst', title: ['Przetłumacz tekst', 'z polskiego na angielski'] },
+		{ content: 'Zadaj mi pytanie', title: ['Zadaj mi pytanie', 'żeby rozpocząć ciekawą rozmowę'] }
+	],
+	features: { enable_admin_chat_access: true, enable_community_sharing: true }
 };
 
-type BaseModel = {
-        id: string;
-        name: string;
-        info?: ModelConfig;
-        owned_by: 'ollama' | 'openai' | 'arena';
+const defaultUser: SessionUser = {
+	id: 'default', email: 'user@localhost', name: 'User', role: 'admin', profile_image_url: '/static/favicon.png',
+	permissions: { chat: { temporary_enforced: false, multiple_models: true }, features: { image_generation: true, code_interpreter: true, web_search: true } }
 };
 
-export interface OpenAIModel extends BaseModel {
-        owned_by: 'openai';
-        external: boolean;
-        source?: string;
+interface StoreState {
+	WEBUI_NAME: string; config: Config | undefined; user: SessionUser | undefined; isApp: boolean; mobile: boolean; socket: any; theme: string;
+	chatId: string; chatTitle: string; chats: any[]; pinnedChats: any[]; tags: any[]; folders: any[]; selectedFolder: any; models: Model[];
+	knowledge: any[]; tools: any[]; functions: any[]; toolServers: any[]; settings: Settings;
+	showSidebar: boolean; showSearch: boolean; showSettings: boolean; showShortcuts: boolean; showArchivedChats: boolean; showChangelog: boolean;
+	showControls: boolean; showEmbeds: boolean; showArtifacts: boolean; artifactCode: string; artifactContents: any; embed: any;
+	temporaryChatEnabled: boolean; scrollPaginationEnabled: boolean; currentChatPage: number;
+	setWEBUI_NAME: (v: string) => void; setConfig: (v: Config | undefined) => void; setUser: (v: SessionUser | undefined) => void;
+	setMobile: (v: boolean) => void; setTheme: (v: string) => void; setChatId: (v: string) => void; setChatTitle: (v: string) => void;
+	setChats: (v: any[]) => void; setPinnedChats: (v: any[]) => void; setTags: (v: any[]) => void; setFolders: (v: any[]) => void;
+	setSelectedFolder: (v: any) => void; setModels: (v: Model[]) => void; setTools: (v: any[]) => void; setFunctions: (v: any[]) => void;
+	setToolServers: (v: any[]) => void; setSettings: (v: Settings) => void; setShowSidebar: (v: boolean) => void; setShowSearch: (v: boolean) => void;
+	setShowSettings: (v: boolean) => void; setShowShortcuts: (v: boolean) => void; setShowArchivedChats: (v: boolean) => void;
+	setShowChangelog: (v: boolean) => void; setShowControls: (v: boolean) => void; setShowEmbeds: (v: boolean) => void;
+	setShowArtifacts: (v: boolean) => void; setArtifactContents: (v: any) => void; setTemporaryChatEnabled: (v: boolean) => void;
+	setScrollPaginationEnabled: (v: boolean) => void; setCurrentChatPage: (v: number) => void;
 }
 
-export interface OllamaModel extends BaseModel {
-        owned_by: 'ollama';
-        details: OllamaModelDetails;
-        size: number;
-        description: string;
-        model: string;
-        modified_at: string;
-        digest: string;
-        ollama?: {
-                name?: string;
-                model?: string;
-                modified_at: string;
-                size?: number;
-                digest?: string;
-                details?: {
-                        parent_model?: string;
-                        format?: string;
-                        family?: string;
-                        families?: string[];
-                        parameter_size?: string;
-                        quantization_level?: string;
-                };
-                urls?: number[];
-        };
-}
-
-type OllamaModelDetails = {
-        parent_model: string;
-        format: string;
-        family: string;
-        families: string[] | null;
-        parameter_size: string;
-        quantization_level: string;
-};
-
-type Settings = {
-        pinnedModels?: never[];
-        toolServers?: never[];
-        detectArtifacts?: boolean;
-        showUpdateToast?: boolean;
-        showChangelog?: boolean;
-        showEmojiInCall?: boolean;
-        voiceInterruption?: boolean;
-        collapseCodeBlocks?: boolean;
-        expandDetails?: boolean;
-        notificationSound?: boolean;
-        notificationSoundAlways?: boolean;
-        stylizedPdfExport?: boolean;
-        notifications?: any;
-        imageCompression?: boolean;
-        imageCompressionSize?: any;
-        textScale?: number;
-        widescreenMode?: null;
-        largeTextAsFile?: boolean;
-        promptAutocomplete?: boolean;
-        hapticFeedback?: boolean;
-        responseAutoCopy?: any;
-        richTextInput?: boolean;
-        params?: any;
-        userLocation?: any;
-        webSearch?: any;
-        memory?: boolean;
-        autoTags?: boolean;
-        autoFollowUps?: boolean;
-        splitLargeChunks?(body: any, splitLargeChunks: any): unknown;
-        backgroundImageUrl?: null;
-        landingPageMode?: string;
-        iframeSandboxAllowForms?: boolean;
-        iframeSandboxAllowSameOrigin?: boolean;
-        scrollOnBranchChange?: boolean;
-        directConnections?: null;
-        chatBubble?: boolean;
-        copyFormatted?: boolean;
-        models?: string[];
-        conversationMode?: boolean;
-        speechAutoSend?: boolean;
-        responseAutoPlayback?: boolean;
-        audio?: AudioSettings;
-        showUsername?: boolean;
-        notificationEnabled?: boolean;
-        highContrastMode?: boolean;
-        title?: TitleSettings;
-        showChatTitleInTab?: boolean;
-        splitLargeDeltas?: boolean;
-        chatDirection?: 'LTR' | 'RTL' | 'auto';
-        ctrlEnterToSend?: boolean;
-
-        system?: string;
-        seed?: number;
-        temperature?: string;
-        repeat_penalty?: string;
-        top_k?: string;
-        top_p?: string;
-        num_ctx?: string;
-        num_batch?: string;
-        num_keep?: string;
-        options?: ModelOptions;
-};
-
-type ModelOptions = {
-        stop?: boolean;
-};
-
-type AudioSettings = {
-        stt: any;
-        tts: any;
-        STTEngine?: string;
-        TTSEngine?: string;
-        speaker?: string;
-        model?: string;
-        nonLocalVoices?: boolean;
-};
-
-type TitleSettings = {
-        auto?: boolean;
-        model?: string;
-        modelExternal?: string;
-        prompt?: string;
-};
-
-type Prompt = {
-        command: string;
-        user_id: string;
-        title: string;
-        content: string;
-        timestamp: number;
-};
-
-type Document = {
-        collection_name: string;
-        filename: string;
-        name: string;
-        title: string;
-};
-
-type Config = {
-        license_metadata: any;
-        status: boolean;
-        name: string;
-        version: string;
-        default_locale: string;
-        default_models: string;
-        default_prompt_suggestions: PromptSuggestion[];
-        features: {
-                enable_admin_chat_access: boolean;
-                enable_community_sharing: boolean;
-        };
-        ui?: {
-                pending_user_overlay_title?: string;
-                pending_user_overlay_description?: string;
-        };
-};
-
-type PromptSuggestion = {
-        content: string;
-        title: [string, string];
-};
-
-export type SessionUser = {
-        permissions: any;
-        id: string;
-        email: string;
-        name: string;
-        role: string;
-        profile_image_url: string;
-};
+export const useStore = create<StoreState>((set) => ({
+	WEBUI_NAME: APP_NAME, config: defaultConfig, user: defaultUser, isApp: false,
+	mobile: typeof window !== 'undefined' ? window.innerWidth < 768 : false,
+	socket: null, theme: 'system', chatId: '', chatTitle: '', chats: [], pinnedChats: [], tags: [], folders: [], selectedFolder: null,
+	models: AI_MODELS.map(m => ({ ...m, info: { meta: { capabilities: { vision: false, usage: true } } } })),
+	knowledge: [], tools: [], functions: [], toolServers: [], settings: {},
+	showSidebar: false, showSearch: false, showSettings: false, showShortcuts: false, showArchivedChats: false, showChangelog: false,
+	showControls: false, showEmbeds: false, showArtifacts: false, artifactCode: '', artifactContents: {}, embed: null,
+	temporaryChatEnabled: false, scrollPaginationEnabled: false, currentChatPage: 1,
+	setWEBUI_NAME: (v) => set({ WEBUI_NAME: v }), setConfig: (v) => set({ config: v }), setUser: (v) => set({ user: v }),
+	setMobile: (v) => set({ mobile: v }), setTheme: (v) => set({ theme: v }), setChatId: (v) => set({ chatId: v }),
+	setChatTitle: (v) => set({ chatTitle: v }), setChats: (v) => set({ chats: v }), setPinnedChats: (v) => set({ pinnedChats: v }),
+	setTags: (v) => set({ tags: v }), setFolders: (v) => set({ folders: v }), setSelectedFolder: (v) => set({ selectedFolder: v }),
+	setModels: (v) => set({ models: v }), setTools: (v) => set({ tools: v }), setFunctions: (v) => set({ functions: v }),
+	setToolServers: (v) => set({ toolServers: v }), setSettings: (v) => set({ settings: v }), setShowSidebar: (v) => set({ showSidebar: v }),
+	setShowSearch: (v) => set({ showSearch: v }), setShowSettings: (v) => set({ showSettings: v }), setShowShortcuts: (v) => set({ showShortcuts: v }),
+	setShowArchivedChats: (v) => set({ showArchivedChats: v }), setShowChangelog: (v) => set({ showChangelog: v }),
+	setShowControls: (v) => set({ showControls: v }), setShowEmbeds: (v) => set({ showEmbeds: v }), setShowArtifacts: (v) => set({ showArtifacts: v }),
+	setArtifactContents: (v) => set({ artifactContents: v }), setTemporaryChatEnabled: (v) => set({ temporaryChatEnabled: v }),
+	setScrollPaginationEnabled: (v) => set({ scrollPaginationEnabled: v }), setCurrentChatPage: (v) => set({ currentChatPage: v }),
+}));
